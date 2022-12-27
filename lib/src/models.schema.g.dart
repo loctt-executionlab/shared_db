@@ -8,6 +8,8 @@ extension Repositories on Database {
   RatingRepository get ratings => RatingRepository._(this);
   UserRepository get users => UserRepository._(this);
   FoodRepository get foods => FoodRepository._(this);
+  RestaurantRepository get restaurants => RestaurantRepository._(this);
+  TagRepository get tags => TagRepository._(this);
 }
 
 final registry = ModelRegistry({});
@@ -116,8 +118,8 @@ class _RatingRepository extends BaseRepository
     var autoIncrements = rows.map((r) => r.toColumnMap()).toList();
 
     await db.query(
-      'INSERT INTO "ratings" ( "food_id", "id", "user_id", "user_name", "content", "rating" )\n'
-      'VALUES ${requests.map((r) => '( ${registry.encode(r.foodId)}, ${registry.encode(autoIncrements[requests.indexOf(r)]['id'])}, ${registry.encode(r.userId)}, ${registry.encode(r.userName)}, ${registry.encode(r.content)}, ${registry.encode(r.rating)} )').join(', ')}\n',
+      'INSERT INTO "ratings" ( "food_id", "restaurant_id", "id", "user_id", "user_name", "content", "rating" )\n'
+      'VALUES ${requests.map((r) => '( ${registry.encode(r.foodId)}, ${registry.encode(r.restaurantId)}, ${registry.encode(autoIncrements[requests.indexOf(r)]['id'])}, ${registry.encode(r.userId)}, ${registry.encode(r.userName)}, ${registry.encode(r.content)}, ${registry.encode(r.rating)} )').join(', ')}\n',
     );
 
     return autoIncrements.map<int>((m) => registry.decode(m['id'])).toList();
@@ -128,9 +130,9 @@ class _RatingRepository extends BaseRepository
     if (requests.isEmpty) return;
     await db.query(
       'UPDATE "ratings"\n'
-      'SET "food_id" = COALESCE(UPDATED."food_id"::int8, "ratings"."food_id"), "user_id" = COALESCE(UPDATED."user_id"::text, "ratings"."user_id"), "user_name" = COALESCE(UPDATED."user_name"::text, "ratings"."user_name"), "content" = COALESCE(UPDATED."content"::text, "ratings"."content"), "rating" = COALESCE(UPDATED."rating"::float8, "ratings"."rating")\n'
-      'FROM ( VALUES ${requests.map((r) => '( ${registry.encode(r.foodId)}, ${registry.encode(r.id)}, ${registry.encode(r.userId)}, ${registry.encode(r.userName)}, ${registry.encode(r.content)}, ${registry.encode(r.rating)} )').join(', ')} )\n'
-      'AS UPDATED("food_id", "id", "user_id", "user_name", "content", "rating")\n'
+      'SET "food_id" = COALESCE(UPDATED."food_id"::int8, "ratings"."food_id"), "restaurant_id" = COALESCE(UPDATED."restaurant_id"::int8, "ratings"."restaurant_id"), "user_id" = COALESCE(UPDATED."user_id"::text, "ratings"."user_id"), "user_name" = COALESCE(UPDATED."user_name"::text, "ratings"."user_name"), "content" = COALESCE(UPDATED."content"::text, "ratings"."content"), "rating" = COALESCE(UPDATED."rating"::float8, "ratings"."rating")\n'
+      'FROM ( VALUES ${requests.map((r) => '( ${registry.encode(r.foodId)}, ${registry.encode(r.restaurantId)}, ${registry.encode(r.id)}, ${registry.encode(r.userId)}, ${registry.encode(r.userName)}, ${registry.encode(r.content)}, ${registry.encode(r.rating)} )').join(', ')} )\n'
+      'AS UPDATED("food_id", "restaurant_id", "id", "user_id", "user_name", "content", "rating")\n'
       'WHERE "ratings"."id" = UPDATED."id"',
     );
   }
@@ -277,6 +279,139 @@ class _FoodRepository extends BaseRepository
   }
 }
 
+abstract class RestaurantRepository
+    implements
+        ModelRepository,
+        KeyedModelRepositoryInsert<RestaurantInsertRequest>,
+        ModelRepositoryUpdate<RestaurantUpdateRequest>,
+        ModelRepositoryDelete<int> {
+  factory RestaurantRepository._(Database db) = _RestaurantRepository;
+
+  Future<Restaurant?> queryRestaurant(int id);
+  Future<List<Restaurant>> queryRestaurants([QueryParams? params]);
+}
+
+class _RestaurantRepository extends BaseRepository
+    with
+        KeyedRepositoryInsertMixin<RestaurantInsertRequest>,
+        RepositoryUpdateMixin<RestaurantUpdateRequest>,
+        RepositoryDeleteMixin<int>
+    implements RestaurantRepository {
+  _RestaurantRepository(Database db) : super(db: db);
+
+  @override
+  Future<Restaurant?> queryRestaurant(int id) {
+    return queryOne(id, RestaurantQueryable());
+  }
+
+  @override
+  Future<List<Restaurant>> queryRestaurants([QueryParams? params]) {
+    return queryMany(RestaurantQueryable(), params);
+  }
+
+  @override
+  Future<List<int>> insert(Database db, List<RestaurantInsertRequest> requests) async {
+    if (requests.isEmpty) return [];
+    var rows =
+        await db.query(requests.map((r) => "SELECT nextval('restaurants_id_seq') as \"id\"").join('\nUNION ALL\n'));
+    var autoIncrements = rows.map((r) => r.toColumnMap()).toList();
+
+    await db.query(
+      'INSERT INTO "restaurants" ( "id", "name", "adress", "delivery_fee", "delivery_time", "banner_image_url", "logo_image_url" )\n'
+      'VALUES ${requests.map((r) => '( ${registry.encode(autoIncrements[requests.indexOf(r)]['id'])}, ${registry.encode(r.name)}, ${registry.encode(r.adress)}, ${registry.encode(r.deliveryFee)}, ${registry.encode(r.deliveryTime)}, ${registry.encode(r.bannerImageUrl)}, ${registry.encode(r.logoImageUrl)} )').join(', ')}\n',
+    );
+
+    return autoIncrements.map<int>((m) => registry.decode(m['id'])).toList();
+  }
+
+  @override
+  Future<void> update(Database db, List<RestaurantUpdateRequest> requests) async {
+    if (requests.isEmpty) return;
+    await db.query(
+      'UPDATE "restaurants"\n'
+      'SET "name" = COALESCE(UPDATED."name"::text, "restaurants"."name"), "adress" = COALESCE(UPDATED."adress"::text, "restaurants"."adress"), "delivery_fee" = COALESCE(UPDATED."delivery_fee"::text, "restaurants"."delivery_fee"), "delivery_time" = COALESCE(UPDATED."delivery_time"::text, "restaurants"."delivery_time"), "banner_image_url" = COALESCE(UPDATED."banner_image_url"::text, "restaurants"."banner_image_url"), "logo_image_url" = COALESCE(UPDATED."logo_image_url"::text, "restaurants"."logo_image_url")\n'
+      'FROM ( VALUES ${requests.map((r) => '( ${registry.encode(r.id)}, ${registry.encode(r.name)}, ${registry.encode(r.adress)}, ${registry.encode(r.deliveryFee)}, ${registry.encode(r.deliveryTime)}, ${registry.encode(r.bannerImageUrl)}, ${registry.encode(r.logoImageUrl)} )').join(', ')} )\n'
+      'AS UPDATED("id", "name", "adress", "delivery_fee", "delivery_time", "banner_image_url", "logo_image_url")\n'
+      'WHERE "restaurants"."id" = UPDATED."id"',
+    );
+  }
+
+  @override
+  Future<void> delete(Database db, List<int> keys) async {
+    if (keys.isEmpty) return;
+    await db.query(
+      'DELETE FROM "restaurants"\n'
+      'WHERE "restaurants"."id" IN ( ${keys.map((k) => registry.encode(k)).join(',')} )',
+    );
+  }
+}
+
+abstract class TagRepository
+    implements
+        ModelRepository,
+        KeyedModelRepositoryInsert<TagInsertRequest>,
+        ModelRepositoryUpdate<TagUpdateRequest>,
+        ModelRepositoryDelete<int> {
+  factory TagRepository._(Database db) = _TagRepository;
+
+  Future<Tag?> queryTag(int id);
+  Future<List<Tag>> queryTags([QueryParams? params]);
+}
+
+class _TagRepository extends BaseRepository
+    with
+        KeyedRepositoryInsertMixin<TagInsertRequest>,
+        RepositoryUpdateMixin<TagUpdateRequest>,
+        RepositoryDeleteMixin<int>
+    implements TagRepository {
+  _TagRepository(Database db) : super(db: db);
+
+  @override
+  Future<Tag?> queryTag(int id) {
+    return queryOne(id, TagQueryable());
+  }
+
+  @override
+  Future<List<Tag>> queryTags([QueryParams? params]) {
+    return queryMany(TagQueryable(), params);
+  }
+
+  @override
+  Future<List<int>> insert(Database db, List<TagInsertRequest> requests) async {
+    if (requests.isEmpty) return [];
+    var rows = await db.query(requests.map((r) => "SELECT nextval('tags_id_seq') as \"id\"").join('\nUNION ALL\n'));
+    var autoIncrements = rows.map((r) => r.toColumnMap()).toList();
+
+    await db.query(
+      'INSERT INTO "tags" ( "id", "name" )\n'
+      'VALUES ${requests.map((r) => '( ${registry.encode(autoIncrements[requests.indexOf(r)]['id'])}, ${registry.encode(r.name)} )').join(', ')}\n',
+    );
+
+    return autoIncrements.map<int>((m) => registry.decode(m['id'])).toList();
+  }
+
+  @override
+  Future<void> update(Database db, List<TagUpdateRequest> requests) async {
+    if (requests.isEmpty) return;
+    await db.query(
+      'UPDATE "tags"\n'
+      'SET "name" = COALESCE(UPDATED."name"::text, "tags"."name")\n'
+      'FROM ( VALUES ${requests.map((r) => '( ${registry.encode(r.id)}, ${registry.encode(r.name)} )').join(', ')} )\n'
+      'AS UPDATED("id", "name")\n'
+      'WHERE "tags"."id" = UPDATED."id"',
+    );
+  }
+
+  @override
+  Future<void> delete(Database db, List<int> keys) async {
+    if (keys.isEmpty) return;
+    await db.query(
+      'DELETE FROM "tags"\n'
+      'WHERE "tags"."id" IN ( ${keys.map((k) => registry.encode(k)).join(',')} )',
+    );
+  }
+}
+
 class FoodAddonInsertRequest {
   FoodAddonInsertRequest({this.foodId, required this.name, required this.description, required this.price});
   int? foodId;
@@ -287,8 +422,14 @@ class FoodAddonInsertRequest {
 
 class RatingInsertRequest {
   RatingInsertRequest(
-      {this.foodId, required this.userId, required this.userName, required this.content, required this.rating});
+      {this.foodId,
+      this.restaurantId,
+      required this.userId,
+      required this.userName,
+      required this.content,
+      required this.rating});
   int? foodId;
+  int? restaurantId;
   String userId;
   String userName;
   String content;
@@ -317,6 +458,27 @@ class FoodInsertRequest {
   double price;
 }
 
+class RestaurantInsertRequest {
+  RestaurantInsertRequest(
+      {required this.name,
+      required this.adress,
+      required this.deliveryFee,
+      required this.deliveryTime,
+      required this.bannerImageUrl,
+      required this.logoImageUrl});
+  String name;
+  String adress;
+  String deliveryFee;
+  String deliveryTime;
+  String bannerImageUrl;
+  String logoImageUrl;
+}
+
+class TagInsertRequest {
+  TagInsertRequest({required this.name});
+  String name;
+}
+
 class FoodAddonUpdateRequest {
   FoodAddonUpdateRequest({this.foodId, required this.id, this.name, this.description, this.price});
   int? foodId;
@@ -327,8 +489,10 @@ class FoodAddonUpdateRequest {
 }
 
 class RatingUpdateRequest {
-  RatingUpdateRequest({this.foodId, required this.id, this.userId, this.userName, this.content, this.rating});
+  RatingUpdateRequest(
+      {this.foodId, this.restaurantId, required this.id, this.userId, this.userName, this.content, this.rating});
   int? foodId;
+  int? restaurantId;
   int id;
   String? userId;
   String? userName;
@@ -354,6 +518,30 @@ class FoodUpdateRequest {
   String? descriptionShort;
   String? descriptionExtended;
   double? price;
+}
+
+class RestaurantUpdateRequest {
+  RestaurantUpdateRequest(
+      {required this.id,
+      this.name,
+      this.adress,
+      this.deliveryFee,
+      this.deliveryTime,
+      this.bannerImageUrl,
+      this.logoImageUrl});
+  int id;
+  String? name;
+  String? adress;
+  String? deliveryFee;
+  String? deliveryTime;
+  String? bannerImageUrl;
+  String? logoImageUrl;
+}
+
+class TagUpdateRequest {
+  TagUpdateRequest({required this.id, this.name});
+  int id;
+  String? name;
 }
 
 class FoodAddonQueryable extends KeyedViewQueryable<FoodAddon, int> {
@@ -518,4 +706,93 @@ class FoodView implements Food {
   final List<Rating> ratings;
   @override
   final List<FoodAddon> addons;
+}
+
+class RestaurantQueryable extends KeyedViewQueryable<Restaurant, int> {
+  @override
+  String get keyName => 'id';
+
+  @override
+  String encodeKey(int key) => registry.encode(key);
+
+  @override
+  String get tableName => 'restaurants_view';
+
+  @override
+  String get tableAlias => 'restaurants';
+
+  @override
+  Restaurant decode(TypedMap map) => RestaurantView(
+      id: map.get('id', registry.decode),
+      name: map.get('name', registry.decode),
+      adress: map.get('adress', registry.decode),
+      deliveryFee: map.get('delivery_fee', registry.decode),
+      deliveryTime: map.get('delivery_time', registry.decode),
+      bannerImageUrl: map.get('banner_image_url', registry.decode),
+      logoImageUrl: map.get('logo_image_url', registry.decode),
+      tags: map.getListOpt('tags', TagQueryable().decoder) ?? const [],
+      ratings: map.getListOpt('ratings', RatingQueryable().decoder) ?? const []);
+}
+
+class RestaurantView implements Restaurant {
+  RestaurantView(
+      {required this.id,
+      required this.name,
+      required this.adress,
+      required this.deliveryFee,
+      required this.deliveryTime,
+      required this.bannerImageUrl,
+      required this.logoImageUrl,
+      required this.tags,
+      required this.ratings});
+
+  @override
+  final int id;
+  @override
+  final String name;
+  @override
+  final String adress;
+  @override
+  final String deliveryFee;
+  @override
+  final String deliveryTime;
+  @override
+  final String bannerImageUrl;
+  @override
+  final String logoImageUrl;
+  @override
+  final List<Tag> tags;
+  @override
+  final List<Rating> ratings;
+}
+
+class TagQueryable extends KeyedViewQueryable<Tag, int> {
+  @override
+  String get keyName => 'id';
+
+  @override
+  String encodeKey(int key) => registry.encode(key);
+
+  @override
+  String get tableName => 'tags_view';
+
+  @override
+  String get tableAlias => 'tags';
+
+  @override
+  Tag decode(TypedMap map) => TagView(
+      restaurants: map.getListOpt('restaurants', RestaurantQueryable().decoder) ?? const [],
+      id: map.get('id', registry.decode),
+      name: map.get('name', registry.decode));
+}
+
+class TagView implements Tag {
+  TagView({required this.restaurants, required this.id, required this.name});
+
+  @override
+  final List<Restaurant> restaurants;
+  @override
+  final int id;
+  @override
+  final String name;
 }

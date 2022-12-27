@@ -287,8 +287,10 @@ abstract class RestaurantRepository
         ModelRepositoryDelete<int> {
   factory RestaurantRepository._(Database db) = _RestaurantRepository;
 
-  Future<Restaurant?> queryRestaurant(int id);
-  Future<List<Restaurant>> queryRestaurants([QueryParams? params]);
+  Future<BaseRestaurantView?> queryBaseView(int id);
+  Future<List<BaseRestaurantView>> queryBaseViews([QueryParams? params]);
+  Future<ReducedRestaurantView?> queryReducedView(int id);
+  Future<List<ReducedRestaurantView>> queryReducedViews([QueryParams? params]);
 }
 
 class _RestaurantRepository extends BaseRepository
@@ -300,13 +302,23 @@ class _RestaurantRepository extends BaseRepository
   _RestaurantRepository(Database db) : super(db: db);
 
   @override
-  Future<Restaurant?> queryRestaurant(int id) {
-    return queryOne(id, RestaurantQueryable());
+  Future<BaseRestaurantView?> queryBaseView(int id) {
+    return queryOne(id, BaseRestaurantViewQueryable());
   }
 
   @override
-  Future<List<Restaurant>> queryRestaurants([QueryParams? params]) {
-    return queryMany(RestaurantQueryable(), params);
+  Future<List<BaseRestaurantView>> queryBaseViews([QueryParams? params]) {
+    return queryMany(BaseRestaurantViewQueryable(), params);
+  }
+
+  @override
+  Future<ReducedRestaurantView?> queryReducedView(int id) {
+    return queryOne(id, ReducedRestaurantViewQueryable());
+  }
+
+  @override
+  Future<List<ReducedRestaurantView>> queryReducedViews([QueryParams? params]) {
+    return queryMany(ReducedRestaurantViewQueryable(), params);
   }
 
   @override
@@ -354,8 +366,10 @@ abstract class TagRepository
         ModelRepositoryDelete<int> {
   factory TagRepository._(Database db) = _TagRepository;
 
-  Future<Tag?> queryTag(int id);
-  Future<List<Tag>> queryTags([QueryParams? params]);
+  Future<BaseTagView?> queryBaseView(int id);
+  Future<List<BaseTagView>> queryBaseViews([QueryParams? params]);
+  Future<InfoTagView?> queryInfoView(int id);
+  Future<List<InfoTagView>> queryInfoViews([QueryParams? params]);
 }
 
 class _TagRepository extends BaseRepository
@@ -367,13 +381,23 @@ class _TagRepository extends BaseRepository
   _TagRepository(Database db) : super(db: db);
 
   @override
-  Future<Tag?> queryTag(int id) {
-    return queryOne(id, TagQueryable());
+  Future<BaseTagView?> queryBaseView(int id) {
+    return queryOne(id, BaseTagViewQueryable());
   }
 
   @override
-  Future<List<Tag>> queryTags([QueryParams? params]) {
-    return queryMany(TagQueryable(), params);
+  Future<List<BaseTagView>> queryBaseViews([QueryParams? params]) {
+    return queryMany(BaseTagViewQueryable(), params);
+  }
+
+  @override
+  Future<InfoTagView?> queryInfoView(int id) {
+    return queryOne(id, InfoTagViewQueryable());
+  }
+
+  @override
+  Future<List<InfoTagView>> queryInfoViews([QueryParams? params]) {
+    return queryMany(InfoTagViewQueryable(), params);
   }
 
   @override
@@ -708,7 +732,7 @@ class FoodView implements Food {
   final List<FoodAddon> addons;
 }
 
-class RestaurantQueryable extends KeyedViewQueryable<Restaurant, int> {
+class BaseRestaurantViewQueryable extends KeyedViewQueryable<BaseRestaurantView, int> {
   @override
   String get keyName => 'id';
 
@@ -716,13 +740,13 @@ class RestaurantQueryable extends KeyedViewQueryable<Restaurant, int> {
   String encodeKey(int key) => registry.encode(key);
 
   @override
-  String get tableName => 'restaurants_view';
+  String get tableName => 'base_restaurants_view';
 
   @override
   String get tableAlias => 'restaurants';
 
   @override
-  Restaurant decode(TypedMap map) => RestaurantView(
+  BaseRestaurantView decode(TypedMap map) => BaseRestaurantView(
       id: map.get('id', registry.decode),
       name: map.get('name', registry.decode),
       adress: map.get('adress', registry.decode),
@@ -730,12 +754,12 @@ class RestaurantQueryable extends KeyedViewQueryable<Restaurant, int> {
       deliveryTime: map.get('delivery_time', registry.decode),
       bannerImageUrl: map.get('banner_image_url', registry.decode),
       logoImageUrl: map.get('logo_image_url', registry.decode),
-      tags: map.getListOpt('tags', TagQueryable().decoder) ?? const [],
+      tags: map.getListOpt('tags', InfoTagViewQueryable().decoder) ?? const [],
       ratings: map.getListOpt('ratings', RatingQueryable().decoder) ?? const []);
 }
 
-class RestaurantView implements Restaurant {
-  RestaurantView(
+class BaseRestaurantView {
+  BaseRestaurantView(
       {required this.id,
       required this.name,
       required this.adress,
@@ -746,27 +770,18 @@ class RestaurantView implements Restaurant {
       required this.tags,
       required this.ratings});
 
-  @override
   final int id;
-  @override
   final String name;
-  @override
   final String adress;
-  @override
   final String deliveryFee;
-  @override
   final String deliveryTime;
-  @override
   final String bannerImageUrl;
-  @override
   final String logoImageUrl;
-  @override
-  final List<Tag> tags;
-  @override
+  final List<InfoTagView> tags;
   final List<Rating> ratings;
 }
 
-class TagQueryable extends KeyedViewQueryable<Tag, int> {
+class ReducedRestaurantViewQueryable extends KeyedViewQueryable<ReducedRestaurantView, int> {
   @override
   String get keyName => 'id';
 
@@ -774,25 +789,93 @@ class TagQueryable extends KeyedViewQueryable<Tag, int> {
   String encodeKey(int key) => registry.encode(key);
 
   @override
-  String get tableName => 'tags_view';
+  String get tableName => 'reduced_restaurants_view';
+
+  @override
+  String get tableAlias => 'restaurants';
+
+  @override
+  ReducedRestaurantView decode(TypedMap map) => ReducedRestaurantView(
+      id: map.get('id', registry.decode),
+      name: map.get('name', registry.decode),
+      adress: map.get('adress', registry.decode),
+      deliveryFee: map.get('delivery_fee', registry.decode),
+      deliveryTime: map.get('delivery_time', registry.decode),
+      bannerImageUrl: map.get('banner_image_url', registry.decode),
+      logoImageUrl: map.get('logo_image_url', registry.decode),
+      ratings: map.getListOpt('ratings', RatingQueryable().decoder) ?? const []);
+}
+
+class ReducedRestaurantView {
+  ReducedRestaurantView(
+      {required this.id,
+      required this.name,
+      required this.adress,
+      required this.deliveryFee,
+      required this.deliveryTime,
+      required this.bannerImageUrl,
+      required this.logoImageUrl,
+      required this.ratings});
+
+  final int id;
+  final String name;
+  final String adress;
+  final String deliveryFee;
+  final String deliveryTime;
+  final String bannerImageUrl;
+  final String logoImageUrl;
+  final List<Rating> ratings;
+}
+
+class BaseTagViewQueryable extends KeyedViewQueryable<BaseTagView, int> {
+  @override
+  String get keyName => 'id';
+
+  @override
+  String encodeKey(int key) => registry.encode(key);
+
+  @override
+  String get tableName => 'base_tags_view';
 
   @override
   String get tableAlias => 'tags';
 
   @override
-  Tag decode(TypedMap map) => TagView(
-      restaurants: map.getListOpt('restaurants', RestaurantQueryable().decoder) ?? const [],
+  BaseTagView decode(TypedMap map) => BaseTagView(
+      restaurants: map.getListOpt('restaurants', ReducedRestaurantViewQueryable().decoder) ?? const [],
       id: map.get('id', registry.decode),
       name: map.get('name', registry.decode));
 }
 
-class TagView implements Tag {
-  TagView({required this.restaurants, required this.id, required this.name});
+class BaseTagView {
+  BaseTagView({required this.restaurants, required this.id, required this.name});
+
+  final List<ReducedRestaurantView> restaurants;
+  final int id;
+  final String name;
+}
+
+class InfoTagViewQueryable extends KeyedViewQueryable<InfoTagView, int> {
+  @override
+  String get keyName => 'id';
 
   @override
-  final List<Restaurant> restaurants;
+  String encodeKey(int key) => registry.encode(key);
+
   @override
+  String get tableName => 'info_tags_view';
+
+  @override
+  String get tableAlias => 'tags';
+
+  @override
+  InfoTagView decode(TypedMap map) =>
+      InfoTagView(id: map.get('id', registry.decode), name: map.get('name', registry.decode));
+}
+
+class InfoTagView {
+  InfoTagView({required this.id, required this.name});
+
   final int id;
-  @override
   final String name;
 }

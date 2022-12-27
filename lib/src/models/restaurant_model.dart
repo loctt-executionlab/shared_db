@@ -1,6 +1,11 @@
 part of '../models.dart';
 
-@Model()
+@Model(views: [
+  View('Base', [Field.view('tags', as: 'Info')]),
+  View('Reduced', [
+    Field.hidden('tags'),
+  ]),
+])
 abstract class Restaurant {
   @PrimaryKey()
   @AutoIncrement()

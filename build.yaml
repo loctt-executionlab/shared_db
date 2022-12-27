@@ -1,0 +1,8 @@
+targets:
+  $default:
+    builders:
+      stormberry:
+        generate_for:
+          # library that exposes all your table classes
+          # modify this if to match your library file
+          - lib/src/models.dart
